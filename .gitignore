@@ -186,3 +186,5 @@ FakesAssemblies/
 *.FSharpLint
 
 *.userprefs
+
+.ionide

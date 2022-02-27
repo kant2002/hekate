@@ -4,163 +4,166 @@ open Hekate
 open Swensen.Unquote
 open Xunit
 
+type ФактAttribute = FactAttribute
+type искл = exn
+
 (* Fixtures *)
 
-let private g1 =
-    Graph.empty
+let private г1 =
+    Граф.пустой
 
-let private g2 =
-    Graph.create 
-        [ 1, "one"
-          2, "two"
-          3, "three" ]
-        [ 2, 1, "left"
-          3, 1, "up"
-          1, 2, "right"
-          2, 3, "down" ]
+let private г2 =
+    Граф.создать 
+        [ 1, "один"
+          2, "два"
+          3, "три" ]
+        [ 2, 1, "влево"
+          3, 1, "вверх"
+          1, 2, "вправо"
+          2, 3, "вниз" ]
 
-(* Construction *)
+(* Создание *)
 
-[<Fact>]
-let ``Nodes.add behaves correctly`` () =
-    let g3 = Graph.Nodes.add (4, "four") g2
+[<Факт>]
+let ``Вершины.добавить ведет себя корректно`` () =
+    let г3 = Граф.Вершины.добавить (4, "четыре") г2
 
-    Graph.Nodes.count g3 =! 4
-    Graph.Nodes.count g3 =! 4
+    Граф.Вершины.количество г3 =! 4
+    Граф.Вершины.количество г3 =! 4
 
-[<Fact>]
-let ``Nodes.remove behaves correctly`` () =
-    let g3 = Graph.Nodes.remove 1 g2
+[<Факт>]
+let ``Вершины.убрать ведет себя корректно`` () =
+    let г3 = Граф.Вершины.убрать 1 г2
 
-    Graph.Nodes.count g3 =! 2
-    Graph.Edges.count g3 =! 1
+    Граф.Вершины.количество г3 =! 2
+    Граф.Ребра.количество г3 =! 1
 
-[<Fact>]
-let ``Edges.add behaves correctly`` () =
-    let g3 = Graph.Edges.add (1, 3, "down") g2
+[<Факт>]
+let ``Ребра.добавить ведет себя корректно`` () =
+    let г3 = Граф.Ребра.добавить (1, 3, "вниз") г2
 
-    Graph.Nodes.count g3 =! 3
-    Graph.Edges.count g3 =! 5
+    Граф.Вершины.количество г3 =! 3
+    Граф.Ребра.количество г3 =! 5
 
-[<Fact>]
-let ``Edges.remove behaves correctly`` () =
-    let g3 = Graph.Edges.remove (2, 1) g2
+[<Факт>]
+let ``Ребра.убрать ведет себя корректно`` () =
+    let г3 = Граф.Ребра.убрать (2, 1) г2
 
-    Graph.Nodes.count g3 =! 3
-    Graph.Edges.count g3 =! 3
+    Граф.Вершины.количество г3 =! 3
+    Граф.Ребра.количество г3 =! 3
 
-(* Queries *)
+(* Запросы *)
 
-[<Fact>]
-let ``Edges.contains behaves correctly`` () =
-    Graph.Edges.contains 1 2 g2 =! true
-    Graph.Edges.contains 1 3 g2 =! false
+[<Факт>]
+let ``Ребра.содержит ведет себя корректно`` () =
+    Граф.Ребра.содержит 1 2 г2 =! true
+    Граф.Ребра.содержит 1 3 г2 =! false
 
-[<Fact>]
-let ``Nodes.contains behaves correctly`` () =
-    Graph.Nodes.contains 1 g2 =! true
-    Graph.Nodes.contains 4 g2 =! false
+[<Факт>]
+let ``Вершины.содержит ведет себя корректно`` () =
+    Граф.Вершины.содержит 1 г2 =! true
+    Граф.Вершины.содержит 4 г2 =! false
 
-[<Fact>]
-let ``isEmpty behaves correctly`` () =
-    Graph.isEmpty g1 =! true
-    Graph.isEmpty g2 =! false
+[<Факт>]
+let ``пуст ведет себя корректно`` () =
+    Граф.пуст г1 =! true
+    Граф.пуст г2 =! false
 
-(* Mapping *)
+(* Отображение *)
 
-[<Fact>]
-let ``Edges.map behaves correctly`` () =
-    let g3 = Graph.Edges.map (fun v1 v2 (e: string) -> sprintf "%i.%i.%s" v1 v2 e) g2
+[<Факт>]
+let ``Ребра.отображение ведет себя корректно`` () =
+    let г3 = Граф.Ребра.отображение (fun в1 в2 (р: string) -> sprintf "%i.%i.%s" в1 в2 р) г2
 
-    Graph.Edges.find 1 2 g3 =! (1, 2, "1.2.right")
+    Граф.Ребра.найти 1 2 г3 =! (1, 2, "1.2.вправо")
 
-[<Fact>]
-let ``Nodes.map behaves correctly`` () =
-    let g3 = Graph.Nodes.map (fun _ (n: string) -> n.ToUpper ()) g2
+[<Факт>]
+let ``Вершины.отображение ведет себя корректно`` () =
+    let г3 = Граф.Вершины.отображение (fun _ (ч: string) -> ч.ToUpper ()) г2
 
-    snd (Graph.Nodes.find 1 g2) =! "one"
-    snd (Graph.Nodes.find 1 g3) =! "ONE"
+    snd (Граф.Вершины.найти 1 г2) =! "один"
+    snd (Граф.Вершины.найти 1 г3) =! "ОДИН"
 
-[<Fact>]
-let ``Nodes.mapFold behaves correctly`` () =
-    let s, g3 = Graph.Nodes.mapFold (fun s _ (n: string) -> n.ToUpper (), s + 1) 0 g2
+[<Факт>]
+let ``Вершины.отображениеСвертка ведет себя корректно`` () =
+    let с, г3 = Граф.Вершины.отображениеСвертка (fun с _ (ч: string) -> ч.ToUpper (), с + 1) 0 г2
 
-    snd (Graph.Nodes.find 1 g2) =! "one"
-    snd (Graph.Nodes.find 1 g3) =! "ONE"
-    s =! 3
+    snd (Граф.Вершины.найти 1 г2) =! "один"
+    snd (Граф.Вершины.найти 1 г3) =! "ОДИН"
+    с =! 3
 
-(* Projection *)
+(* Проекция *)
 
-[<Fact>]
-let ``Nodes.toList behaves correctly`` () =
-    List.length (Graph.Nodes.toList g2) =! 3
+[<Факт>]
+let ``Вершины.вСписок ведет себя корректно`` () =
+    List.length (Граф.Вершины.вСписок г2) =! 3
 
-[<Fact>]
-let ``Edges.toList behaves correctly`` () =
-    List.length (Graph.Edges.toList g2) =! 4
+[<Факт>]
+let ``Ребра.вСписок ведет себя корректно`` () =
+    List.length (Граф.Ребра.вСписок г2) =! 4
 
-(* Inspection *)
+(* Инспекция *)
 
-[<Fact>]
-let ``Nodes.tryFind behaves correctly`` () =
-    Graph.Nodes.tryFind 1 g2 =! Some (1, "one")
-    Graph.Nodes.tryFind 4 g2 =! None
+[<Факт>]
+let ``Вершины.попробоватьНайти ведет себя корректно`` () =
+    Граф.Вершины.попробоватьНайти 1 г2 =! Some (1, "один")
+    Граф.Вершины.попробоватьНайти 4 г2 =! None
 
-[<Fact>]
-let ``Nodes.find behaves correctly`` () =
-    Graph.Nodes.find 1 g2 =! (1, "one")
-    raises<exn> <@ Graph.Nodes.find 4 g2 @>
+[<Факт>]
+let ``Вершины.найти ведет себя корректно`` () =
+    Граф.Вершины.найти 1 г2 =! (1, "один")
+    raises<искл> <@ Граф.Вершины.найти 4 г2 @>
 
-[<Fact>]
-let ``rev behaves correctly`` () =
-    let g3 = Graph.rev g2
-    let g4 = Graph.Edges.remove (1, 3) g3
+[<Факт>]
+let ``рев ведет себя корректно`` () =
+    let г3 = Граф.рев г2
+    let г4 = Граф.Ребра.убрать (1, 3) г3
 
-    Graph.Edges.count g3 =! 4
-    Graph.Edges.count g4 =! 3
+    Граф.Ребра.количество г3 =! 4
+    Граф.Ребра.количество г4 =! 3
 
-(* Adjacency/Degree *)
+(* Смежность/Степень *)
 
-[<Fact>]
-let ``Nodes.neighbours behaves correctly`` () =
-    Graph.Nodes.neighbours 1 g2
-        =! Some [ 2, "left"
-                  3, "up"
-                  2, "right" ]
+[<Факт>]
+let ``Вершины.соседи ведет себя корректно`` () =
+    Граф.Вершины.соседи 1 г2
+        =! Some [ 2, "влево"
+                  3, "вверх"
+                  2, "вправо" ]
 
-[<Fact>]
-let ``Nodes.successors behaves correctly`` () =
-    Graph.Nodes.successors 1 g2
-        =! Some [ 2, "right" ]
+[<Факт>]
+let ``Вершины.наследники ведет себя корректно`` () =
+    Граф.Вершины.наследники 1 г2
+        =! Some [ 2, "вправо" ]
 
-[<Fact>]
-let ``Nodes.predecessors behaves correctly`` () =
-    Graph.Nodes.predecessors 1 g2 
-        =! Some [ 2, "left"
-                  3, "up" ]
+[<Факт>]
+let ``Вершины.предшественники ведет себя корректно`` () =
+    Граф.Вершины.предшественники 1 г2 
+        =! Some [ 2, "влево"
+                  3, "вверх" ]
 
-[<Fact>]
-let ``Nodes.outward behaves correctly`` () =
-    Graph.Nodes.outward 1 g2 
-        =! Some [ 1, 2, "right" ]
+[<Факт>]
+let ``Вершины.исходящие ведет себя корректно`` () =
+    Граф.Вершины.исходящие 1 г2 
+        =! Some [ 1, 2, "вправо" ]
 
-[<Fact>]
-let ``Nodes.inward behaves correctly`` () =
-    Graph.Nodes.inward 1 g2 
-        =! Some [ 2, 1, "left"
-                  3, 1, "up" ]
+[<Факт>]
+let ``Вершины.входящие ведет себя корректно`` () =
+    Граф.Вершины.входящие 1 г2 
+        =! Some [ 2, 1, "влево"
+                  3, 1, "вверх" ]
 
-[<Fact>]
-let ``Nodes.degree behaves correctly`` () =
-    Graph.Nodes.degree 1 g2 
+[<Факт>]
+let ``Вершины.степень ведет себя корректно`` () =
+    Граф.Вершины.степень 1 г2 
         =! Some 3
 
-[<Fact>]
-let ``Nodes.outwardDegree behaves correctly`` () =
-    Graph.Nodes.outwardDegree 1 g2 
+[<Факт>]
+let ``Вершины.полустепеньИсхода ведет себя корректно`` () =
+    Граф.Вершины.полустепеньИсхода 1 г2 
         =! Some 1
 
-[<Fact>]
-let ``Nodes.inwardDegree behaves correctly`` () =
-    Graph.Nodes.inwardDegree 1 g2 
+[<Факт>]
+let ``Вершины.полустепеньЗахода ведет себя корректно`` () =
+    Граф.Вершины.полустепеньЗахода 1 г2 
         =! Some 2

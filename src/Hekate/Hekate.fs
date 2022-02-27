@@ -1,21 +1,21 @@
 ﻿module Hekate
 
-(* Introduction
+(* Введение
 
-   A library for working with graphs in a purely functional way, based
-   on ideas from papers on inductive graphs and functional algorithms,
-   principally by Martin Erwig. Those papers are particularly relevant to
-   understanding the internals of this library.
+   Библиотека для работы с графами в чисто функциональном виде, основываясь
+   на идеях из статей об индуктивных графах и функциональных алгоритмах,
+   в основаном от Мартина Эрвига. Эти статьи в особенности релевантны
+   для понимания внутренностей этой библиотеки.
 
-   The following papers are referenced in commentary throughout the code:
+   Следующие статьи упоминаются в комментариях по всему коду:
 
-   [Erwig:2001ho]: Inductive Graphs and Functional Graph Algorithms
+   [Erwig:2001ho]: Индуктивные Графы и Функциональные Графовые Алгоритмы
                    http://dl.acm.org/citation.cfm?id=968434.968437
 
-   The library is spiritually similar to the Haskell FGL library, which
-   is unsurprising given that it was originally written by Erwig et al,
-   based on [Erwig:2001ho]. However, we simplify some aspects and change
-   others due to our own needs and type system.
+   Эта библиотека духовно схожа с Haskell библиотекой FGL, что
+   не удивительно учитывая что она была изначально написана Эрвига и пр.,
+   на основании [Erwig:2001ho]. Однако, мы упростили одни аспекты
+   и изменили другие из-за собственных нужд и нужд системы типов.
 
    [FGL]: http://hackage.haskell.org/package/fgl
 
@@ -43,26 +43,26 @@ open System
 open Aether
 open Aether.Operators
 
-(* Prelude
+(* Прелюдия
 
    Useful utility functions used throughout Hekate. *)
 
 let private flip f a b =
     f b a
 
-let private swap (a, b) =
+let private обменять (a, b) =
     (b, a)
 
-(* Definitional Types and Lenses
+(* Определяющие Типы и Линзы
 
-   Types defining data structures which form the logical programming model
-   defined by the inductive definition of graphs, along with a set of lenses
-   for access to nested data structures. *)
+   Типы определяющие структуры данных которые формируют логическую
+   модель программирования определяемая по индуктивному определению графов,
+   совместно с набором линз для доступа к вложенным структурам данных. *)
 
-type Node<'v> =
+type Вершина<'v> =
     'v
 
-type Edge<'v> =
+type Ребро<'v> =
     'v * 'v
 
 type LNode<'v,'a> =
@@ -71,20 +71,20 @@ type LNode<'v,'a> =
 type LEdge<'v,'b> =
     'v * 'v * 'b
 
-type Adj<'v,'b> =
+type Сосед<'v,'b> =
     ('b * 'v) list
 
-type Context<'v,'a,'b> =
-    Adj<'v,'b> * 'v * 'a * Adj<'v,'b>
+type Контекст<'v,'a,'b> =
+    Сосед<'v,'b> * 'v * 'a * Сосед<'v,'b>
 
-let private pred_ : Lens<Context<'v,_,'b>, Adj<'v,'b>> =
-    (fun (p, _, _, _) -> p), (fun p (_, v, l, s) -> (p, v, l, s))
+let private пред_ : Lens<Контекст<'v,_,'b>, Сосед<'v,'b>> =
+    (fun (п, _, _, _) -> п), (fun п (_, v, л, н) -> (п, v, л, н))
 
-let private val_ : Lens<Context<'v,_,_>, 'v> =
-    (fun (_, v, _, _) -> v), (fun v (p, _, l, s) -> (p, v, l, s))
+let private знач_ : Lens<Контекст<'v,_,_>, 'v> =
+    (fun (_, з, _, _) -> з), (fun v (п, _, л, н) -> (п, v, л, н))
 
-let private succ_ : Lens<Context<'v,_,'b>, Adj<'v,'b>> =
-    (fun (_, _, _, s) -> s), (fun s (p, v, l, _) -> (p, v, l, s))
+let private насл_ : Lens<Контекст<'v,_,'b>, Сосед<'v,'b>> =
+    (fun (_, _, _, н) -> н), (fun н (п, в, л, _) -> (п, в, л, н))
 
 (* Representational Types and Lenses
 
@@ -92,42 +92,43 @@ let private succ_ : Lens<Context<'v,_,'b>, Adj<'v,'b>> =
    logically defined inductive definition as an optimized map, with sub-maps
    defining node adjacencies. *)
 
-type MAdj<'v,'b> when 'v: comparison =
+type ОСосед<'v,'b> when 'v: comparison =
     Map<'v,'b>
 
-type MContext<'v,'a,'b> when 'v: comparison =
-    MAdj<'v,'b> * 'a * MAdj<'v,'b>
+type ОКонтекст<'v,'a,'b> when 'v: comparison =
+    ОСосед<'v,'b> * 'a * ОСосед<'v,'b>
 
-type MGraph<'v,'a,'b> when 'v: comparison =
-    Map<'v, MContext<'v,'a,'b>>
+type ОГраф<'v,'a,'b> when 'v: comparison =
+    Map<'v, ОКонтекст<'v,'a,'b>>
 
-type Graph<'v,'a,'b> when 'v: comparison =
-    MGraph<'v,'a,'b>
+type Граф<'v,'a,'b> when 'v: comparison =
+    ОГраф<'v,'a,'b>
 
-let private mpred_ : Lens<MContext<'v,_,'b>, MAdj<'v,'b>> =
-    (fun (p, _, _) -> p), (fun p (_, l, s) -> (p, l, s))
+let private опред_ : Lens<ОКонтекст<'v,_,'b>, ОСосед<'v,'b>> =
+    (fun (п, _, _) -> п), (fun п (_, л, н) -> (п, л, н))
 
-let private msucc_ : Lens<MContext<'v,_,'b>, MAdj<'v,'b>> =
-    (fun (_, _, s) -> s), (fun s (p, l, _) -> (p, l, s))
+let private онасл_ : Lens<ОКонтекст<'v,_,'b>, ОСосед<'v,'b>> =
+    (fun (_, _, н) -> н), (fun н (п, л, _) -> (п, л, н))
 
-(* Mappings
+(* Отображения
 
-   Mapping functions between the two definitional and representational data
-   structure families, used when translating between algorithmic operations applied
+   Функции отображения между двумя определяющими и репрезентатиными семействами структур данных,
+   используются когда переводятся между алгоритмическими 
+   операциями применяемыми к определяющей модели, и модификации used when translating between algorithmic operations applied
    to the definitional model, and modifications to the underlying data structure of
    the optmized representational model. *)
 
-let private fromAdj<'v,'b when 'v: comparison> : Adj<'v,'b> -> MAdj<'v,'b> =
-    List.map swap >> Map.ofList
+let private изСосед<'v,'b when 'v: comparison> : Сосед<'v,'b> -> ОСосед<'v,'b> =
+    List.map обменять >> Map.ofList
 
-let private toAdj<'v,'b when 'v: comparison> : MAdj<'v,'b> -> Adj<'v,'b> =
-    Map.toList >> List.map swap
+let private вСосед<'v,'b when 'v: comparison> : ОСосед<'v,'b> -> Сосед<'v,'b> =
+    Map.toList >> List.map обменять
 
-let private fromContext<'v,'a,'b when 'v: comparison> : Context<'v,'a,'b> -> MContext<'v,'a,'b> =
-    fun (p, _, l, s) -> fromAdj p, l, fromAdj s
+let private изКонтекста<'v,'a,'b when 'v: comparison> : Контекст<'v,'a,'b> -> ОКонтекст<'v,'a,'b> =
+    fun (п, _, l, н) -> изСосед п, l, изСосед н
 
-let private toContext<'v,'a,'b when 'v: comparison> v : MContext<'v,'a,'b> -> Context<'v,'a,'b> =
-    fun (p, l, s) -> toAdj p, v, l, toAdj s
+let private вКонтекст<'v,'a,'b when 'v: comparison> v : ОКонтекст<'v,'a,'b> -> Контекст<'v,'a,'b> =
+    fun (п, l, н) -> вСосед п, v, l, вСосед н
 
 (* Construction
 
@@ -138,21 +139,21 @@ let private toContext<'v,'a,'b when 'v: comparison> v : MContext<'v,'a,'b> -> Co
    "Empty" is defined as "empty", and "&" is defined as the function
    "compose". *)
 
-type Id<'v> =
+type Ид<'v> =
     'v -> 'v
 
-let private empty : Graph<'v,'a,'b> =
+let private пустой : Граф<'v,'a,'b> =
     Map.empty
 
-let private composeGraph c v p s =
-        Optic.set (Map.value_ v) (Some (fromContext c))
-     >> flip (List.fold (fun g (b, v') -> (Map.add v b ^% (Map.key_ v' >?> msucc_)) g)) p
-     >> flip (List.fold (fun g (b, v') -> (Map.add v b ^% (Map.key_ v' >?> mpred_)) g)) s
+let private составитьГраф c v p s =
+        Optic.set (Map.value_ v) (Some (изКонтекста c))
+     >> flip (List.fold (fun g (b, v') -> (Map.add v b ^% (Map.key_ v' >?> онасл_)) g)) p
+     >> flip (List.fold (fun g (b, v') -> (Map.add v b ^% (Map.key_ v' >?> опред_)) g)) s
 
-let private compose (c: Context<'v,'a,'b>) : Id<Graph<'v,'a,'b>> =
-    composeGraph c (c ^. val_) (c ^. pred_) (c ^. succ_)
+let private составить (c: Контекст<'v,'a,'b>) : Ид<Граф<'v,'a,'b>> =
+    составитьГраф c (c ^. знач_) (c ^. пред_) (c ^. насл_)
 
-(* Decomposition
+(* Декомпозиция
 
    Functions for decomposing an existent graph through a process
    of matching, as defined in the table of Basic Graph Operations
@@ -163,226 +164,226 @@ let private compose (c: Context<'v,'a,'b>) : Id<Graph<'v,'a,'b>> =
    function becomes "decompose", and the "&v" function becomes "decomposeSpecific", to
    better align with F# expectations. *)
 
-let private decomposeContext v =
-        Map.remove v ^% mpred_
-     >> Map.remove v ^% msucc_
-     >> toContext v
+let private разложитьКонтекст v =
+        Map.remove v ^% опред_
+     >> Map.remove v ^% онасл_
+     >> вКонтекст v
 
-let private decomposeGraph v p s =
+let private разложитьГраф v p s =
         Map.remove v
-     >> flip (List.fold (fun g (_, a) -> (Map.remove v ^% (Map.key_ a >?> msucc_)) g)) p
-     >> flip (List.fold (fun g (_, a) -> (Map.remove v ^% (Map.key_ a >?> mpred_)) g)) s
+     >> flip (List.fold (fun g (_, a) -> (Map.remove v ^% (Map.key_ a >?> онасл_)) g)) p
+     >> flip (List.fold (fun g (_, a) -> (Map.remove v ^% (Map.key_ a >?> опред_)) g)) s
 
-let private decomposeSpecific v (g: Graph<'v,'a,'b>) =
+let private разложитьКонкретный v (g: Граф<'v,'a,'b>) =
     match Map.tryFind v g with
     | Some mc ->
-        let c = decomposeContext v mc
-        let g = decomposeGraph v (c ^. pred_) (c ^. succ_) g
+        let c = разложитьКонтекст v mc
+        let g = разложитьГраф v (c ^. пред_) (c ^. насл_) g
 
         Some c, g
     | _ ->
         None, g
 
-let private decompose (g: Graph<'v,'a,'b>) : Context<'v,'a,'b> option * Graph<'v,'a,'b> =
+let private разложить (g: Граф<'v,'a,'b>) : Контекст<'v,'a,'b> option * Граф<'v,'a,'b> =
     match Map.tryFindKey (fun _ _ -> true) g with
-    | Some v -> decomposeSpecific v g
+    | Some v -> разложитьКонкретный v g
     | _ -> None, g
 
-let private isEmpty<'v,'a,'b when 'v: comparison> : Graph<'v,'a,'b> -> bool =
+let private пуст<'v,'a,'b when 'v: comparison> : Граф<'v,'a,'b> -> bool =
     Map.isEmpty
 
-(* Functions
+(* Функции
 
    Useful functions defined in terms of the Basic Graph Operations, though
    not expected to be used directly. *)
 
 let rec private ufold f u =
-       decompose
+       разложить
     >> function | Some c, g -> f c (ufold f u g)
                 | _ -> u
 
-let private fold f xs : Graph<'v,'a,'b> -> Graph<'v,'a,'b> =
+let private свертка f xs : Граф<'v,'a,'b> -> Граф<'v,'a,'b> =
     flip (List.fold (flip f)) xs
 
-(* Graph
+(* Граф
 
-   The "public" API to Hekate is exposed as the Graph[.[Edges|Nodes]] modules,
+   The "public" API to Hekate is exposed as the Граф[.[Edges|Узлы]] modules,
    providing an API stylistically similar to common F# modules like List, Map, etc.
 
    F# naming conventions have been applied where relevant, in contrast to
    either FGL or [Erwig:2001ho]. *)
 
 [<RequireQualifiedAccess>]
-module Graph =
+module Граф =
 
     [<RequireQualifiedAccess>]
-    module Edges =
+    module Ребра =
 
-        (* Operations *)
+        (* Операции *)
 
-        let add ((v1, v2, e): LEdge<'v,'b>) =
-                Map.add v2 e ^% (Map.key_ v1 >?> msucc_)
-             >> Map.add v1 e ^% (Map.key_ v2 >?> mpred_)
+        let добавить ((v1, v2, e): LEdge<'v,'b>) =
+                Map.add v2 e ^% (Map.key_ v1 >?> онасл_)
+             >> Map.add v1 e ^% (Map.key_ v2 >?> опред_)
 
-        let addMany es =
-                fold add es
+        let добавитьНесколько es =
+                свертка добавить es
 
-        let remove ((v1, v2): Edge<'v>) =
-                decomposeSpecific v1
-             >> function | Some (p, v, l, s), g -> compose (p, v, l, List.filter (fun (_, v') -> v' <> v2) s) g
+        let убрать ((v1, v2): Ребро<'v>) =
+                разложитьКонкретный v1
+             >> function | Some (p, v, l, s), g -> составить (p, v, l, List.filter (fun (_, v') -> v' <> v2) s) g
                          | _, g -> g
 
-        let removeMany es =
-                fold remove es
+        let убратьНесколько es =
+                свертка убрать es
 
-        (* Properties *)
+        (* Свойства *)
 
-        let count<'v,'a,'b when 'v: comparison> : Graph<'v,'a,'b> -> int =
+        let количество<'v,'a,'b when 'v: comparison> : Граф<'v,'a,'b> -> int =
                 Map.toArray
              >> Array.map (fun (_, (_, _, s)) -> (Map.toList >> List.length) s)
              >> Array.sum
 
-        (* Map *)
+        (* Отображение *)
 
-        let map mapping : Graph<'v,'a,'b> -> Graph<'v,'a,'c> =
+        let отображение mapping : Граф<'v,'a,'b> -> Граф<'v,'a,'c> =
                 Map.map (fun v (p, l, s) ->
                     Map.map (fun v' x -> mapping v' v x) p,
                     l,
                     Map.map (fun v' x -> mapping v v' x) s)
 
-        (* Projection *)
+        (* Проекция *)
 
-        let toList<'v,'a,'b when 'v: comparison> : Graph<'v,'a,'b> -> LEdge<'v,'b> list =
+        let вСписок<'v,'a,'b when 'v: comparison> : Граф<'v,'a,'b> -> LEdge<'v,'b> list =
                 Map.toList
              >> List.map (fun (v, (_, _, s)) -> (Map.toList >> List.map (fun (v', b) -> v, v', b)) s)
              >> List.concat
 
-        (* Query*)
+        (* Запросы *)
 
-        let contains v1 v2 : Graph<'v,'a,'b> -> bool =
+        let содержит v1 v2 : Граф<'v,'a,'b> -> bool =
                 Map.tryFind v1
              >> Option.bind (fun (_, _, s) -> Map.tryFind v2 s)
              >> Option.isSome
 
 
-        let tryFind v1 v2 : Graph<'v,'a,'b> -> LEdge<'v,'b> option =
+        let попробоватьНайти v1 v2 : Граф<'v,'a,'b> -> LEdge<'v,'b> option =
                 Map.tryFind v1
              >> Option.bind (fun (_, _, s) -> Map.tryFind v2 s)
              >> Option.map (fun b -> (v1, v2, b))
 
-        let find v1 v2 =
-                tryFind v1 v2
+        let найти v1 v2 =
+                попробоватьНайти v1 v2
              >> function | Some e -> e
                          | _ -> failwith (sprintf "Edge %A %A Not Found" v1 v2)
 
     [<RequireQualifiedAccess>]
-    module Nodes =
+    module Вершины =
 
-        (* Operations*)
+        (* Операции *)
 
-        let add ((v, l): LNode<'v,'a>) =
+        let добавить ((v, l): LNode<'v,'a>) =
                 Map.add v (Map.empty, l, Map.empty)
 
-        let addMany ns =
-                fold add ns
+        let добавитьНесколько ns =
+                свертка добавить ns
 
-        let remove v =
-                decomposeSpecific v
+        let убрать v =
+                разложитьКонкретный v
              >> snd
 
-        let removeMany vs =
-                fold remove vs
+        let убратьНесколько vs =
+                свертка убрать vs
 
-        (* Properties *)
+        (* Свойства *)
 
-        let count<'v,'a,'b when 'v: comparison> : Graph<'v,'a,'b> -> int =
+        let количество<'v,'a,'b when 'v: comparison> : Граф<'v,'a,'b> -> int =
                 Map.toArray
              >> Array.length
 
-        (* Map *)
+        (* Отображение *)
 
-        let map mapping : Graph<'v,'a,'b> -> Graph<'v,'c,'b> =
+        let отображение mapping : Граф<'v,'a,'b> -> Граф<'v,'c,'b> =
                 Map.map (fun v (p, l, s) ->
                     p, mapping v l, s)
 
-        let mapFold mapping state : Graph<'v,'a,'b> -> 's * Graph<'v,'c,'b> =
+        let отображениеСвертка mapping state : Граф<'v,'a,'b> -> 's * Граф<'v,'c,'b> =
                 Map.toList
              >> List.mapFold (fun state (v, (p, l, s)) -> mapping state v l |> fun (c, state) -> (v, (p, c, s)), state) state
              >> fun (graph, state) -> state, Map.ofList graph
 
-        (* Projection *)
+        (* Проекция *)
 
-        let toList<'v,'a,'b when 'v: comparison> : Graph<'v,'a,'b> -> LNode<'v,'a> list =
+        let вСписок<'v,'a,'b when 'v: comparison> : Граф<'v,'a,'b> -> LNode<'v,'a> list =
                 Map.toList
              >> List.map (fun (v, (_, l, _)) -> v, l)
 
-        (* Query*)
+        (* Запросы *)
 
-        let contains v : Graph<'v,'a,'b> -> bool =
+        let содержит v : Граф<'v,'a,'b> -> bool =
                 Map.containsKey v
 
-        let tryFind v : Graph<'v,'a,'b> -> LNode<'v,'a> option =
+        let попробоватьНайти v : Граф<'v,'a,'b> -> LNode<'v,'a> option =
                 Map.tryFind v
              >> Option.map (fun (_, l, _) -> v, l)
 
-        let find v =
-                tryFind v
+        let найти v =
+                попробоватьНайти v
              >> function | Some n -> n
                          | _ -> failwith (sprintf "Node %A Not Found" v)
 
-        (* Adjacency and Degree *)
+        (* Смежность и Степень *)
 
-        let neighbours v =
-                Map.tryFind v
+        let соседи в =
+                Map.tryFind в
              >> Option.map (fun (p, _, s) -> Map.toList p @ Map.toList s)
 
-        let successors v =
-                Map.tryFind v
+        let наследники в =
+                Map.tryFind в
              >> Option.map (fun (_, _, s) -> Map.toList s)
 
-        let predecessors v =
-                Map.tryFind v
+        let предшественники в =
+                Map.tryFind в
              >> Option.map (fun (p, _, _) -> Map.toList p)
 
-        let outward v =
+        let исходящие v =
                 Map.tryFind v
              >> Option.map (fun (_, _, s) -> (Map.toList >> List.map (fun (v', b) -> v, v', b)) s)
 
-        let inward v =
+        let входящие v =
                 Map.tryFind v
              >> Option.map (fun (p, _, _) -> (Map.toList >> List.map (fun (v', b) -> v', v, b)) p)
 
-        let degree v =
+        let степень v =
                 Map.tryFind v
              >> Option.map (fun (p, _, s) -> (Map.toList >> List.length) p + (Map.toList >> List.length) s)
 
-        let outwardDegree v =
+        let полустепеньИсхода v =
                 Map.tryFind v
              >> Option.map (fun (_, _, s) -> (Map.toList >> List.length) s)
 
-        let inwardDegree v =
+        let полустепеньЗахода v =
                 Map.tryFind v
              >> Option.map (fun (p, _, _) -> (Map.toList >> List.length) p)
 
-    (* Operations *)
+    (* Операции *)
 
-    let create ns es : Graph<'v,'a,'b> =
-        (Nodes.addMany ns >> Edges.addMany es) empty
+    let создать ns es : Граф<'v,'a,'b> =
+        (Вершины.добавитьНесколько ns >> Ребра.добавитьНесколько es) пустой
 
-    let empty =
-        empty
+    let пустой =
+        пустой
 
-    (* Properties *)
+    (* Свойства *)
 
-    let isEmpty<'v,'a,'b when 'v: comparison> : Graph<'v,'a,'b> -> bool =
-        isEmpty
+    let пуст<'v,'a,'b when 'v: comparison> : Граф<'v,'a,'b> -> bool =
+        пуст
 
-    (* Mapping *)
+    (* Отображение *)
 
-    let map f : Graph<'v,'a,'b> -> Graph<'v,'c,'d> =
-        Map.map (fun v mc -> (toContext v >> f >> fromContext) mc)
+    let отображение f : Граф<'v,'a,'b> -> Граф<'v,'c,'d> =
+        Map.map (fun v mc -> (вКонтекст v >> f >> изКонтекста) mc)
 
-    let rev<'v,'a,'b when 'v: comparison> : Graph<'v,'a,'b> -> Graph<'v,'a,'b> =
+    let рев<'v,'a,'b when 'v: comparison> : Граф<'v,'a,'b> -> Граф<'v,'a,'b> =
         Map.map (fun _ (p, l, s) -> (s, l, p))
 
     (* Obsolete (Deprecated) Functions
@@ -390,126 +391,126 @@ module Graph =
        To be removed in the 4.0 release of Hekate after adequate
        transition time. *)
 
-    (* Operations *)
+    (* Операции *)
 
-    [<Obsolete ("Use Graph.Edges.add instead.")>]
+    [<Obsolete ("Use Граф.Ребра.add instead.")>]
     let addEdge =
-        Edges.add
+        Ребра.добавить
 
-    [<Obsolete ("Use Graph.Edges.addMany instead.")>]
+    [<Obsolete ("Use Граф.Ребра.addMany instead.")>]
     let addEdges =
-        Edges.addMany
+        Ребра.добавитьНесколько
 
-    [<Obsolete ("Use Graph.Nodes.add instead.")>]
+    [<Obsolete ("Use Граф.Вершины.add instead.")>]
     let addNode =
-        Nodes.add
+        Вершины.добавить
 
-    [<Obsolete ("Use Graph.Nodes.addMany instead.")>]
+    [<Obsolete ("Use Граф.Вершины.addMany instead.")>]
     let addNodes =
-        Nodes.addMany
+        Вершины.добавитьНесколько
 
-    [<Obsolete ("Use Graph.Edges.remove instead.")>]
+    [<Obsolete ("Use Граф.Ребра.remove instead.")>]
     let removeEdge =
-        Edges.remove
+        Ребра.убрать
 
-    [<Obsolete ("Use Graph.Edges.removeMany instead.")>]
+    [<Obsolete ("Use Граф.Ребра.removeMany instead.")>]
     let removeEdges =
-        Edges.removeMany
+        Ребра.убратьНесколько
 
-    [<Obsolete ("Use Graph.Nodes.remove instead.")>]
+    [<Obsolete ("Use Граф.Вершины.remove instead.")>]
     let removeNode =
-        Nodes.remove
+        Вершины.убрать
 
-    [<Obsolete ("Use Graph.Nodes.removeMany instead.")>]
+    [<Obsolete ("Use Граф.Вершины.removeMany instead.")>]
     let removeNodes =
-        Nodes.removeMany
+        Вершины.убратьНесколько
 
     (* Properties *)
 
-    [<Obsolete ("Use Graph.Edges.count instead.")>]
-    let countEdges<'v,'a,'b when 'v: comparison> : Graph<'v,'a,'b> -> int =
-        Edges.count
+    [<Obsolete ("Use Граф.Ребра.count instead.")>]
+    let countEdges<'v,'a,'b when 'v: comparison> : Граф<'v,'a,'b> -> int =
+        Ребра.количество
 
-    [<Obsolete ("Use Graph.Nodes.count instead.")>]
-    let countNodes<'v,'a,'b when 'v: comparison> : Graph<'v,'a,'b> -> int =
-        Nodes.count
+    [<Obsolete ("Use Граф.Вершины.количество instead.")>]
+    let countNodes<'v,'a,'b when 'v: comparison> : Граф<'v,'a,'b> -> int =
+        Вершины.количество
 
     (* Map *)
 
-    [<Obsolete ("Use Graph.Edges.map instead.")>]
+    [<Obsolete ("Use Граф.Ребра.map instead.")>]
     let mapEdges =
-        Edges.map
+        Ребра.отображение
 
-    [<Obsolete ("Use Graph.Nodes.map instead.")>]
+    [<Obsolete ("Use Граф.Вершины.map instead.")>]
     let mapNodes =
-        Nodes.map
+        Вершины.отображение
 
     (* Projection *)
 
-    [<Obsolete ("Use Graph.Edges.toList instead.")>]
-    let edges<'v,'a,'b when 'v: comparison> : Graph<'v,'a,'b> -> LEdge<'v,'b> list =
-        Edges.toList
+    [<Obsolete ("Use Граф.Ребра.toList instead.")>]
+    let edges<'v,'a,'b when 'v: comparison> : Граф<'v,'a,'b> -> LEdge<'v,'b> list =
+        Ребра.вСписок
 
-    [<Obsolete ("Use Graph.Nodes.toList instead.")>]
-    let nodes<'v,'a,'b when 'v: comparison> : Graph<'v,'a,'b> -> LNode<'v,'a> list =
-        Nodes.toList
+    [<Obsolete ("Use Граф.Вершины.toList instead.")>]
+    let nodes<'v,'a,'b when 'v: comparison> : Граф<'v,'a,'b> -> LNode<'v,'a> list =
+        Вершины.вСписок
 
     (* Query *)
 
-    [<Obsolete ("Use Graph.Edges.contains instead.")>]
+    [<Obsolete ("Use Граф.Ребра.contains instead.")>]
     let containsEdge =
-        Edges.contains
+        Ребра.содержит
 
-    [<Obsolete ("Use Graph.Nodes.contains instead.")>]
+    [<Obsolete ("Use Граф.Вершины.contains instead.")>]
     let containsNode =
-        Nodes.contains
+        Вершины.содержит
 
-    [<Obsolete ("Use Graph.Edges.find instead.")>]
+    [<Obsolete ("Use Граф.Ребра.find instead.")>]
     let findEdge =
-        Edges.find
+        Ребра.найти
 
-    [<Obsolete ("Use Graph.Nodes.find instead.")>]
+    [<Obsolete ("Use Граф.Вершины.find instead.")>]
     let findNode =
-        Nodes.find
+        Вершины.найти
 
-    [<Obsolete ("Use Graph.Edges.tryFind instead.")>]
+    [<Obsolete ("Use Граф.Ребра.tryFind instead.")>]
     let tryFindEdge =
-        Edges.tryFind
+        Ребра.попробоватьНайти
 
-    [<Obsolete ("Use Graph.Nodes.tryFind instead.")>]
+    [<Obsolete ("Use Граф.Вершины.tryFind instead.")>]
     let tryFindNode =
-        Nodes.tryFind
+        Вершины.попробоватьНайти
 
     (* Adjacency and Degree *)
 
-    [<Obsolete ("Use Graph.Nodes.neighbours instead.")>]
+    [<Obsolete ("Use Граф.Вершины.neighbours instead.")>]
     let neighbours =
-        Nodes.neighbours
+        Вершины.соседи
 
-    [<Obsolete ("Use Graph.Nodes.successors instead.")>]
+    [<Obsolete ("Use Граф.Вершины.successors instead.")>]
     let successors =
-        Nodes.successors
+        Вершины.наследники
 
-    [<Obsolete ("Use Graph.Nodes.predecessors instead.")>]
+    [<Obsolete ("Use Граф.Вершины.predecessors instead.")>]
     let predecessors =
-        Nodes.predecessors
+        Вершины.предшественники
 
-    [<Obsolete ("Use Graph.Nodes.outward instead.")>]
+    [<Obsolete ("Use Граф.Вершины.outward instead.")>]
     let outward =
-        Nodes.outward
+        Вершины.исходящие
 
-    [<Obsolete ("Use Graph.Nodes.inward instead.")>]
+    [<Obsolete ("Use Граф.Вершины.inward instead.")>]
     let inward =
-        Nodes.inward
+        Вершины.входящие
 
-    [<Obsolete ("Use Graph.Nodes.degree instead.")>]
+    [<Obsolete ("Use Граф.Вершины.степень instead.")>]
     let degree =
-        Nodes.degree
+        Вершины.степень
 
-    [<Obsolete ("Use Graph.Nodes.outwardDegree instead.")>]
-    let outwardDegree =
-        Nodes.outwardDegree
+    [<Obsolete ("Use Граф.Вершины.полустепеньИсхода instead.")>]
+    let полустепеньИсхода =
+        Вершины.полустепеньИсхода
 
-    [<Obsolete ("Use Graph.Nodes.inwardDegree instead.")>]
+    [<Obsolete ("Use Граф.Вершины.полустепеньЗахода instead.")>]
     let inwardDegree =
-        Nodes.inwardDegree
+        Вершины.полустепеньЗахода

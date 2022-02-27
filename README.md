@@ -5,7 +5,7 @@
 
 ## What is Hekate?
 
-[Hekate][hekate] is a Graph library for F#, similar to the Haskell FGL package. See the dedicated [Hekate Site][hekate] for more information.
+[Hekate][hekate] это библиотека Графов для F#, наподобие пакета FGL для Haskell. Посетите отдельный [сайт Hekate][hekate] для дополнительной информации. Это русскоязычная адаптация АПИ.
 
 ## Installation
 
